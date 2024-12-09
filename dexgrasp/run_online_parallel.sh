@@ -30,29 +30,29 @@ do
         (
         cuda_id=$((Device_Number - 1 - ncount % Device_Number))
 
-        # echo "Train dedicated policy: $nline, episode: $nepisode, cuda:$cuda_id, config: $Config_Dir"
-        # # train single model for single line in object_scale_file, within Target_List
-        # python run_online.py --task StateBasedGrasp --algo ppo --seed 0 --rl_device cuda:${cuda_id} \
-        # --num_envs $Ntrain_envs --max_iterations $Ntrain_its --config $Config_Dir --headless \
-        # --object_scale_file $Object_File --start_line $nline --end_line $((nline + 1))
+        echo "Train dedicated policy: $nline, episode: $nepisode, cuda:$cuda_id, config: $Config_Dir"
+        # train single model for single line in object_scale_file, within Target_List
+        python run_online.py --task StateBasedGrasp --algo ppo --seed 0 --rl_device cuda:${cuda_id} \
+        --num_envs $Ntrain_envs --max_iterations $Ntrain_its --config $Config_Dir --headless \
+        --object_scale_file $Object_File --start_line $nline --end_line $((nline + 1))
 
-        # echo "Test dedicated policy: $nline, episode: $nepisode, cuda:$cuda_id, config: $Config_Dir"
-        # # test single model for single line in object_scale_file, within Target_List
-        # python run_online.py --task StateBasedGrasp --algo ppo --seed 0 --rl_device cuda:${cuda_id} \
-        # --num_envs $Ntest_envs --max_iterations $Ntrain_its --config $Config_Dir --headless --test --test_iteration $Ntest_its \
-        # --object_scale_file $Object_File --start_line $nline --end_line $((nline + 1))
+        echo "Test dedicated policy: $nline, episode: $nepisode, cuda:$cuda_id, config: $Config_Dir"
+        # test single model for single line in object_scale_file, within Target_List
+        python run_online.py --task StateBasedGrasp --algo ppo --seed 0 --rl_device cuda:${cuda_id} \
+        --num_envs $Ntest_envs --max_iterations $Ntrain_its --config $Config_Dir --headless --test --test_iteration $Ntest_its \
+        --object_scale_file $Object_File --start_line $nline --end_line $((nline + 1))
 
         # echo "Generate trajectory: $nline, episode: $nepisode, cuda:$cuda_id, config: $Config_Dir"
         # # test single model for single line in object_scale_file, within Target_List
         # python run_online.py --task StateBasedGrasp --algo ppo --seed 0 --rl_device cuda:${cuda_id} \
         # --num_envs 100 --max_iterations $Ntrain_its --config $Config_Dir --headless --test --test_iteration 10 \
-        # --object_scale_file $Object_File --start_line $nline --end_line $((nline + 1))
+        # --object_scale_file $Object_File --start_line $nline --end_line $((nline + 1)) --save --save_train
 
-        echo "Render dedicated policy: $nline, episode: $nepisode, cuda:$cuda_id, config: $Config_Dir"
-        # test single model for single line in object_scale_file, within Target_List
-        python run_online.py --task StateBasedGrasp --algo ppo --seed 0 --rl_device cuda:${cuda_id} \
-        --num_envs 10 --max_iterations $Ntrain_its --config $Config_Dir --headless --render_hyper_view --test --test_iteration 1 \
-        --object_scale_file $Object_File --start_line $nline --end_line $((nline + 1))
+        # echo "Render dedicated policy: $nline, episode: $nepisode, cuda:$cuda_id, config: $Config_Dir"
+        # # test single model for single line in object_scale_file, within Target_List
+        # python run_online.py --task StateBasedGrasp --algo ppo --seed 0 --rl_device cuda:${cuda_id} \
+        # --num_envs 10 --max_iterations $Ntrain_its --config $Config_Dir --headless --render_hyper_view --test --test_iteration 1 \
+        # --object_scale_file $Object_File --start_line $nline --end_line $((nline + 1))
 
         ) &
         
