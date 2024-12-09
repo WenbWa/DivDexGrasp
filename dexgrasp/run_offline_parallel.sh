@@ -1,6 +1,6 @@
-# bash train_offline_universal.sh 0 9 10 universal_policy_state_based.yaml train_set_results.yaml
-# bash train_offline_universal.sh 0 139 140 universal_policy_state_based.yaml test_set_seen_cat_results.yaml
-# bash train_offline_universal.sh 0 99 100 universal_policy_state_based.yaml test_set_unseen_cat_results.yaml
+# bash run_offline_parallel.sh 0 9 10 universal_policy_state_based.yaml train_set_results.yaml
+# bash run_offline_parallel.sh 0 139 140 universal_policy_state_based.yaml test_set_seen_cat_results.yaml
+# bash run_offline_parallel.sh 0 99 100 universal_policy_state_based.yaml test_set_unseen_cat_results.yaml
 # Define Start, Finish Lines, Episode Num, Config_Dir, Object_File
 Start=$1
 Finish=$2
