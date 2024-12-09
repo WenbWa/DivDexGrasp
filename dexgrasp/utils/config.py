@@ -493,7 +493,7 @@ def get_args(benchmark=False, use_rlg_config=False):
             # update group logdir: Logs/save_name/results_distill/group/save_name/model_dir_seed0/nline_seed0
             else:
                 # load object_scale_groups
-                object_scale_groups = load_yaml(os.path.realpath('../results/state_based/{}'.format(args.object_scale_file)))
+                object_scale_groups = load_yaml(os.path.realpath('../results/configs/{}'.format(args.object_scale_file)))
                 if args.start_line >= len(object_scale_groups[args.group]['object_line']): return args, False
                 args.logdir = os.path.join('{}/{:04d}'.format(distill_folder, object_scale_groups[args.group]['object_line'][args.start_line]))
             

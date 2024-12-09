@@ -41,7 +41,7 @@ class StateBasedGrasp(BaseTask):
         self.config = cfg['config']
         # vision_based setting
         self.vision_based = True if 'vision_based' in self.config['Modes'] and self.config['Modes']['vision_based'] else False
-        if self.vision_based: self.cfg["env"]["numEnvs"] = min(100, self.cfg["env"]["numEnvs"])
+        if self.vision_based: self.cfg["env"]["numEnvs"] = min(10, self.cfg["env"]["numEnvs"])  # limit to 10 environments to increase speed
         # init vision_based_tracker 
         self.vision_based_tracker = None
         # init params from cfg
@@ -302,7 +302,7 @@ class StateBasedGrasp(BaseTask):
             self.object_code_list = list(self.object_scale_dict.keys())
         else:
             # load object_scale_dict from object_scale_file: train_set_results.yaml
-            yaml_file = osp.join(BASE_DIR, 'results/state_based/{}'.format(self.object_scale_file))
+            yaml_file = osp.join(BASE_DIR, 'results/configs/{}'.format(self.object_scale_file))
             # locate distill_group objects
             if self.group is not None:
                 # test distill_group with single object

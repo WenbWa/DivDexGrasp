@@ -72,8 +72,8 @@ Weights:
 Distills:
   save_name: universal_policy/vision_based
 
-  use_object_pcas: True
-  use_dynamic_pcas: True
+  # use_object_pcas: True
+  # use_dynamic_pcas: True
   
   # hyper_params
   double_update_step: True
@@ -95,8 +95,8 @@ Distills:
 Offlines:
   save_name: universal_policy/vision_based
 
-  use_object_pcas: True
-  use_dynamic_pcas: True
+  # use_object_pcas: True
+  # use_dynamic_pcas: True
 
   # locate trajectory folder
   trajectory_name: results_trajectory

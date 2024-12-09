@@ -43,11 +43,15 @@ cd PROJECT_BASE/UniGraspTransformer
 pip install -e .
 ```
 
-Install pytorch3d and pytorch_kinematics:
+Install pytorch_kinematics:
 ```
-pip install "git+https://github.com/facebookresearch/pytorch3d.git"
 cd PROJECT_BASE/UniGraspTransformer/pytorch_kinematics
 pip install -e .
+```
+
+Install pytorch3d:
+```
+pip install "git+https://github.com/facebookresearch/pytorch3d.git"
 ```
 
 # Step1: Train and Test Dedicated Policy:
