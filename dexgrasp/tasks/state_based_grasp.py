@@ -41,7 +41,7 @@ class StateBasedGrasp(BaseTask):
         self.config = cfg['config']
         # vision_based setting
         self.vision_based = True if 'vision_based' in self.config['Modes'] and self.config['Modes']['vision_based'] else False
-        if self.vision_based: self.cfg["env"]["numEnvs"] = min(10, self.cfg["env"]["numEnvs"])  # limit to 10 environments to increase speed
+        if self.vision_based: self.cfg["env"]["numEnvs"] = min(100, self.cfg["env"]["numEnvs"])  # limit to 100 environments to increase speed
         # init vision_based_tracker 
         self.vision_based_tracker = None
         # init params from cfg
