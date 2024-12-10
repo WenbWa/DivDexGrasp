@@ -103,7 +103,7 @@ def train_offline_model_batch(args):
 
     ## ------------------------ Load Trajectory Dataset ------------------------ ##
     # locate object_scale_yaml
-    object_scale_yaml = osp.join(BASE_DIR, 'results/state_based/{}'.format(args.object))
+    object_scale_yaml = osp.join(BASE_DIR, 'results/configs/{}'.format(args.object))
     # init ObjectTrajectoryDataset
     OTDataset = ObjectTrajectoryDatasetBatch(config=config, log_dir=log_dir, asset_dir=asset_dir, trajectory_dir=trajectory_dir, object_scale_yaml=object_scale_yaml, 
                                              target_object_lines=list(range(args.start, args.finish+1)), device=args.device)
