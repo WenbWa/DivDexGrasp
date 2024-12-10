@@ -11,11 +11,12 @@
 </p>
 
 # Released
-- [x] Code and model for training and testing.
-- [x] Pre-trained checkpoints for isaacgym3.
-- [ ] Pre-trained checkpoints for isaacgym4.
+- [x] Code for training and testing.
+- [x] Pre-trained models for isaacgym3.
+- [ ] Pre-trained models for isaacgym4.
 
-# Folder Structure:
+# Get Started
+## Folder Structure:
 ```
 PROJECT_BASE
     └── Logs
@@ -38,7 +39,7 @@ PROJECT_BASE
         └── dexgrasp
 ```
 
-# Install Environment:
+## Install Environment:
 Create conda env:
 ```
 conda create -n dexgrasp python=3.8
@@ -68,7 +69,8 @@ Install pytorch3d:
 pip install "git+https://github.com/facebookresearch/pytorch3d.git"
 ```
 
-# Step1: Train and Test Dedicated Policy:
+# Train from scratch
+## Step1: Train and Test Dedicated Policy:
 ```
 cd PROJECT_BASE/UniGraspTransformer/dexgrasp/
 ```
@@ -83,7 +85,7 @@ python run_online.py --task=StateBasedGrasp --algo=ppo --seed=0 --rl_device cuda
     --object_scale_file train_set_results.yaml --start_line 0 --end_line 1
 ```
 
-# Step2: Generate Trajectory Dataset:
+## Step2: Generate Trajectory Dataset:
 Generate trajectories for single $nline=0 object in $Object_File=train_set_results.yaml:
 ```
 python run_online.py --task StateBasedGrasp --algo ppo --seed 0 --rl_device cuda:0 \
@@ -91,7 +93,7 @@ python run_online.py --task StateBasedGrasp --algo ppo --seed 0 --rl_device cuda
     --object_scale_file train_set_results.yaml --start_line 0 --end_line 1 --save --save_train
 ```
 
-# Step3: Train and Test Universal Policies:
+## Step3: Train and Test Universal Policies:
 Repeat step1 and step2 for $nline objects, like from 0 to 9, and train universal policies:
 ```
 python run_offline.py --start 0 --finish 9 --config universal_policy_state_based.yaml --object train_set_results.yaml --device cuda:0
@@ -109,3 +111,8 @@ python run_online.py --task StateBasedGrasp --algo dagger_value --seed 0 --rl_de
 --num_envs 100 --max_iterations 10000 --config universal_policy_vision_based.yaml --headless --test --test_iteration 1 \
 --model_dir distill_0000_0009 --object_scale_file train_set_results.yaml --start_line 0 --end_line 1
 ```
+
+# Test pre-trained models (IsaacGym3)
+## Test State-based Universal Policy:
+
+## Test Vision-based Universal Policy:

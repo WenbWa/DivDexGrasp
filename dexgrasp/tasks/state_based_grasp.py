@@ -307,15 +307,15 @@ class StateBasedGrasp(BaseTask):
             if self.group is not None:
                 # test distill_group with single object
                 if self.is_testing:
-                    self.object_line_list, self.object_scale_list, self.object_scale_dict, _ = \
+                    self.object_line_list, self.object_scale_list, self.object_scale_dict = \
                         load_object_scale_group_yaml(yaml_file, self.group, self.start_line)
                 # train distill_group with group objects
                 else:
-                    self.object_line_list, self.object_scale_list, self.object_scale_dict, _ = \
+                    self.object_line_list, self.object_scale_list, self.object_scale_dict = \
                         load_object_scale_group_yaml(yaml_file, self.group)
             # locate train_single object
             else:
-                self.object_line_list, self.object_scale_list, self.object_scale_dict, _ = \
+                self.object_line_list, self.object_scale_list, self.object_scale_dict = \
                     load_object_scale_result_yaml(yaml_file, self.start_line, self.end_line, self.shuffle_dict)
             self.object_code_list = list(self.object_scale_dict.keys())
 

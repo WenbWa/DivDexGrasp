@@ -26,7 +26,7 @@ class ObjectTrajectoryDatasetBatch(Dataset):
         self.object_mesh_dir = osp.join(self.asset_dir, 'meshdatav3_scaled')
         self.visual_feat_dir = osp.join(self.asset_dir, 'meshdatav3_pc_feat')
         # load object_scale_yaml
-        self.object_line_list, self.object_scale_list, self.object_scale_dict, _ = load_object_scale_result_yaml(object_scale_yaml)
+        self.object_line_list, self.object_scale_list, self.object_scale_dict = load_object_scale_result_yaml(object_scale_yaml)
         # self.object_scale_dict = {object_code: [scale], }
         # self.object_scale_list = [object_code/scale, ]
         # self.object_line_list = [object_line, ]
