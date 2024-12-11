@@ -46,7 +46,7 @@ do
         # # test single model for single line in object_scale_file, within Target_List
         # python run_online.py --task StateBasedGrasp --algo ppo --seed 0 --rl_device cuda:${cuda_id} \
         # --num_envs 100 --max_iterations $Ntrain_its --config $Config_Dir --headless --test --test_iteration 10 \
-        # --object_scale_file $Object_File --start_line $nline --end_line $((nline + 1)) --save --save_train
+        # --object_scale_file $Object_File --start_line $nline --end_line $((nline + 1)) --save --save_train --save_render
 
         # echo "Render dedicated policy: $nline, episode: $nepisode, cuda:$cuda_id, config: $Config_Dir"
         # # test single model for single line in object_scale_file, within Target_List

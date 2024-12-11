@@ -137,6 +137,32 @@ class ObjectTrajectoryDatasetBatch(Dataset):
         # mask_obs_object_state
         if 'mask_obs_object_state' in self.config['Offlines'] and self.config['Offlines']['mask_obs_object_state']:
             object_trajectory_data['observations'][..., self.config['Obs']['intervals']['objects'][0]:self.config['Obs']['intervals']['objects'][1]] *= 0.
+        
+        # vision_based: update observations
+        if self.vision_based:
+            # load rendered object_state: features, centers, hand_object
+            object_state_path = osp.join(self.trajectory_dir, '{:04d}_seed0'.format(self.target_object_lines[nobj]), 'pointcloud/pointcloud_{:03d}.pkl'.format(ntraj))
+            object_state = load_pickle(object_state_path)
+            # check valid appears within trajectory
+            object_state = check_object_valid_appears(object_state['valids'], object_state)
+            # update object features
+            object_trajectory_data['observations'][..., self.config['Obs']['intervals']['object_visual'][0]:self.config['Obs']['intervals']['object_visual'][1]] = object_state['features']
+            # update object centers
+            object_trajectory_data['observations'][..., self.config['Obs']['intervals']['objects'][0]:self.config['Obs']['intervals']['objects'][1]] *= 0
+            object_trajectory_data['observations'][..., self.config['Obs']['intervals']['objects'][0]:self.config['Obs']['intervals']['objects'][0]+3] = object_state['centers']
+            # update hand_objects
+            object_trajectory_data['observations'][..., self.config['Obs']['intervals']['hand_objects'][0]:self.config['Obs']['intervals']['hand_objects'][1]] = object_state['hand_object']
+            # update valids with appears
+            object_trajectory_data['valids'] *= object_state['appears']
+            # use object pcas, estimated from rendered object points
+            if 'use_object_pcas' in self.config['Offlines'] and self.config['Offlines']['use_object_pcas']:
+                # get object pcas
+                object_pcas = object_state['pcas'].reshape(object_state['pcas'].shape[0], object_state['pcas'].shape[1], -1)
+                # use dynamic or static object pcas
+                if self.config['Offlines']['use_dynamic_pcas']: object_trajectory_data['observations'][..., self.config['Obs']['intervals']['objects'][0]+6:self.config['Obs']['intervals']['objects'][0]+15] = object_pcas
+                else: object_trajectory_data['observations'][..., self.config['Obs']['intervals']['objects'][0]+6:self.config['Obs']['intervals']['objects'][0]+15] = object_pcas[:, 0, :][:, None, :]
+
+        
         # load external feature: state-based or vision-based
         if self.use_external_feature:
             # use state-based pc features

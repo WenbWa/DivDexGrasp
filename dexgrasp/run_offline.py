@@ -32,7 +32,7 @@ def train_offline_model_batch(args):
     # locate asset folder
     asset_dir = osp.join(BASE_DIR, '../Assets')
     # TODO: locate trajectory folder: use training
-    trajectory_name = 'results_trajectory_train'
+    trajectory_name = 'results_trajectory_render'
     if 'trajectory_name' in config['Offlines']: trajectory_name = config['Offlines']['trajectory_name']
     trajectory_dir = osp.join(BASE_DIR, '../Logs/{}/{}'.format(config['Infos']['save_name'], trajectory_name))
     # locate log_dir

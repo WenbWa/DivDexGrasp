@@ -360,7 +360,7 @@ def sample_label_points(points, label, number):
         else: samples = points[n][label_flags[n]][torch.randint(0, num_sample, (number, ))]
         # append label_points
         label_points.append(samples)
-    return torch.stack(label_points), appears
+    return torch.stack(label_points), appears.unsqueeze(-1)
 
 # check object appears, update disappear datas
 def check_object_valid_appears(valids, datas):

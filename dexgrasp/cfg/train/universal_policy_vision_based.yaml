@@ -99,7 +99,7 @@ Offlines:
   # use_dynamic_pcas: True
 
   # locate trajectory folder
-  trajectory_name: results_trajectory
+  trajectory_name: results_trajectory_render
 
   # use transformer_encoder actor
   # transformer encoder

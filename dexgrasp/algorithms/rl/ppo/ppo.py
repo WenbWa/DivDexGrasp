@@ -160,7 +160,7 @@ class PPO:
                 start_time = time.time()
                 self.vec_env.task.current_test_iteration = it + 1
                 # Save rendered point cloud trajectory
-                point_cloud_trajectory = {'rendered': [], 'canonical': [], 'hand': []} if self.vec_env.task.config['Save'] and self.vec_env.task.config['Save_Render'] else None
+                point_cloud_trajectory = {'canonical': [], 'rendered': [], 'centers': [], 'appears': [], 'features': [], 'pcas': [], 'hand_body': [], 'hand_object': []} if self.vec_env.task.config['Save'] and self.vec_env.task.config['Save_Render'] else None
                 # Save observation-action-value-success trajectory
                 obs_action_trajectory = {'observations': [], 'actions': [], 'values': [], 'states': [], 'features': [], 'successes': None, 'final_successes': None} if self.vec_env.task.config['Save'] else None
                 # Test PPO for max_episode_length
@@ -184,9 +184,14 @@ class PPO:
                             obs_action_trajectory['features'].append(self.vec_env.task.object_points_visual_features.clone())
                         # Save point cloud trajectory
                         if point_cloud_trajectory is not None:
-                            point_cloud_trajectory['rendered'].append(self.vec_env.task.pytorch_rendered_points.clone().to(torch.float16))
                             point_cloud_trajectory['canonical'].append(self.vec_env.task.object_points.clone().to(torch.float16))
-                            point_cloud_trajectory['hand'].append(self.vec_env.task.hand_body_pos.clone())
+                            point_cloud_trajectory['rendered'].append(self.vec_env.task.rendered_object_points.clone().to(torch.float16))
+                            point_cloud_trajectory['centers'].append(self.vec_env.task.rendered_object_points_centers.clone())
+                            point_cloud_trajectory['appears'].append(self.vec_env.task.rendered_object_points_appears.clone())
+                            point_cloud_trajectory['features'].append(self.vec_env.task.rendered_points_visual_features.clone())
+                            point_cloud_trajectory['pcas'].append(self.vec_env.task.rendered_object_pcas.clone())
+                            point_cloud_trajectory['hand_body'].append(self.vec_env.task.hand_body_pos.clone())
+                            point_cloud_trajectory['hand_object'].append(self.vec_env.task.rendered_hand_object_dists.clone())
                         # Step the vec_environment, update observation
                         next_obs, rews, dones, infos = self.vec_env.step(actions, id)
                         current_obs.copy_(next_obs)
@@ -219,9 +224,14 @@ class PPO:
                         save_pickle(osp.join(self.vec_env.task.render_folder, 'trajectory_{:03d}.pkl'.format(ncurrent + ngroup)), sub_trajectory)
                 # save point cloud trajectory: (Nenv, 200, 1024, 3), (Nenv, 200, 1024, 3), (Nenv, 200, 36, 3)
                 if point_cloud_trajectory is not None:
-                    point_cloud_trajectory['rendered'] = torch.stack(point_cloud_trajectory['rendered'], dim=1).cpu().numpy()
                     point_cloud_trajectory['canonical'] = torch.stack(point_cloud_trajectory['canonical'], dim=1).cpu().numpy()
-                    point_cloud_trajectory['hand'] = torch.stack(point_cloud_trajectory['hand'], dim=1).cpu().numpy()
+                    point_cloud_trajectory['rendered'] = torch.stack(point_cloud_trajectory['rendered'], dim=1).cpu().numpy()
+                    point_cloud_trajectory['centers'] = torch.stack(point_cloud_trajectory['centers'], dim=1).cpu().numpy()
+                    point_cloud_trajectory['appears'] = torch.stack(point_cloud_trajectory['appears'], dim=1).cpu().numpy()
+                    point_cloud_trajectory['features'] = torch.stack(point_cloud_trajectory['features'], dim=1).cpu().numpy()
+                    point_cloud_trajectory['pcas'] = torch.stack(point_cloud_trajectory['pcas'], dim=1).cpu().numpy()
+                    point_cloud_trajectory['hand_body'] = torch.stack(point_cloud_trajectory['hand_body'], dim=1).cpu().numpy()
+                    point_cloud_trajectory['hand_object'] = torch.stack(point_cloud_trajectory['hand_object'], dim=1).cpu().numpy()
                     point_cloud_trajectory['successes'] = obs_action_trajectory['successes']
                     point_cloud_trajectory['final_successes'] = obs_action_trajectory['final_successes']
                     point_cloud_trajectory['valids'] = obs_action_trajectory['valids']

@@ -41,7 +41,7 @@ class StateBasedGrasp(BaseTask):
         self.config = cfg['config']
         # vision_based setting
         self.vision_based = True if 'vision_based' in self.config['Modes'] and self.config['Modes']['vision_based'] else False
-        if self.vision_based: self.cfg["env"]["numEnvs"] = min(100, self.cfg["env"]["numEnvs"])  # limit to 100 environments to increase speed
+        if self.vision_based: self.cfg["env"]["numEnvs"] = min(10, self.cfg["env"]["numEnvs"])  # limit to 10 environments to increase speed
         # init vision_based_tracker 
         self.vision_based_tracker = None
         # init params from cfg
@@ -1231,7 +1231,20 @@ class StateBasedGrasp(BaseTask):
         if self.config['Save_Render'] or self.sample_point_clouds:
             # pytorch render scene images(Nenv, Nview, H, W, RGBMDS) and points(Nenv, Npoint, XYZS)
             self.pytorch_rendered_images, self.pytorch_rendered_points = self.render_pytorch_images_points(self.hand_object_states, render_images=True, sample_points=True)
-            # save rendered images
+            # sample rendered object_points
+            self.rendered_object_points, self.rendered_object_points_appears = sample_label_points(self.pytorch_rendered_points, label=SEGMENT_ID['object'][0], number=1024)
+            self.rendered_object_points = self.rendered_object_points[..., :3]
+            # compute rendered object_points centers
+            self.rendered_object_points_centers = torch.mean(self.rendered_object_points, dim=1)
+            # compute rendered object_features
+            self.rendered_points_visual_features, _ = self.object_visual_encoder((self.rendered_object_points - self.rendered_object_points_centers.unsqueeze(1)).permute(0, 2, 1))
+            self.rendered_points_visual_features = ((self.rendered_points_visual_features.squeeze(-1) - self.object_visual_scaler_mean) / self.object_visual_scaler_scale).float()
+            # compute hand_object distances
+            self.rendered_hand_object_dists = batch_sided_distance(self.hand_body_pos, self.rendered_object_points)
+            # compute object pca axes
+            self.rendered_object_pcas = torch.tensor(batch_decompose_pcas(self.rendered_object_points), device=self.device)
+
+            # save rendered images for visualization
             if self.render_folder is not None and self.num_envs==1 and self.current_iteration==0:
                 # grid pytorch_rendered_images
                 grid_pytorch_rendered_images = grid_camera_images(self.pytorch_rendered_images[0], border=False)
@@ -1240,37 +1253,25 @@ class StateBasedGrasp(BaseTask):
                 save_path = osp.join(self.render_folder, '{}_{:03d}_{:03d}.png'.format('render_depth', self.current_iteration, self.frame))
                 save_image(save_path, grid_depth_images.cpu().numpy().astype(np.uint8))
 
+                # render hand and object point_images for visualization
+                # create hand and object label_colors
+                label_colors = torch.ones_like(self.pytorch_rendered_points[..., :3])
+                label_colors[self.pytorch_rendered_points[..., -1] == 2] = torch.tensor([128., 215., 128.]).to(self.device)
+                label_colors[self.pytorch_rendered_points[..., -1] == 3] = torch.tensor([90., 90., 173.]).to(self.device)
                 # render hand and object point_images
-                if self.num_envs == 1:
-                    # create hand and object label_colors
-                    label_colors = torch.ones_like(self.pytorch_rendered_points[..., :3])
-                    label_colors[self.pytorch_rendered_points[..., -1] == 2] = torch.tensor([128., 215., 128.]).to(self.device)
-                    label_colors[self.pytorch_rendered_points[..., -1] == 3] = torch.tensor([90., 90., 173.]).to(self.device)
-                    # render hand and object point_images
-                    point_images = self.pytorch_renderer.render_point_images(self.pytorch_rendered_points[..., [1, 2, 0]], label_colors/225.)
-                    point_images = point_images[0, 0, :self.image_size, :self.image_size].cpu().numpy() * 255
-                    # apply goal_table background
-                    point_images[point_images==0] = self.pytorch_renderer.goal_table_image[point_images==0]
-                    save_image(osp.join(self.render_folder, '{}_{:03d}_{:03d}.png'.format('demo_vision', self.current_iteration, self.frame)), point_images.astype(np.uint8))
-                    # load rgb and seg images
-                    rgb_images = self.grid_camera_images['rgb'][:self.image_size, :self.image_size, :3]
-                    seg_images = self.grid_camera_images['seg'][:self.image_size, :self.image_size, :3]
-                    # apply table background
-                    table_labels = torch.sum(seg_images, axis=-1) == 0
-                    rgb_images[table_labels] = torch.tensor([167., 146., 129.]).to(self.device)
-                    rgb_images = rgb_images.cpu().numpy()
-                    save_image(osp.join(self.render_folder, '{}_{:03d}_{:03d}.png'.format('demo_state', self.current_iteration, self.frame)), rgb_images.astype(np.uint8))
-
-                    # seg_image = load_image("/data0/v-wenbowang/Desktop/Logs/CVPR/full_train_best_0_static_init_body_grasp/results_train/*_seed0/seg.png")[:1024, :1024, :3]
-                    # label = (np.sum(seg_image, axis=-1) != 255 * 3) * 1 + (seg_image[..., 0] != 125)
-                    # seg_image[label == 2] = 0
-                    # save_image("/data0/v-wenbowang/Desktop/Logs/CVPR/full_train_best_0_static_init_body_grasp/results_train/*_seed0/seg_new.png", seg_image)
-                    # table_image = load_image("/data0/v-wenbowang/Desktop/Logs/CVPR/full_train_best_0_static_init_body_grasp/results_train/*_seed0/goal_table.png")[:1024, :1024, :3]
-                    # table_image[seg_image[..., 0]==0, 0] = 167
-                    # table_image[seg_image[..., 0]==0, 1] = 146
-                    # table_image[seg_image[..., 0]==0, 2] = 129
-                    # save_image("/data0/v-wenbowang/Desktop/Logs/CVPR/full_train_best_0_static_init_body_grasp/results_train/*_seed0/goal_table_new.png", table_image)
-
+                point_images = self.pytorch_renderer.render_point_images(self.pytorch_rendered_points[..., [1, 2, 0]], label_colors/225.)
+                point_images = point_images[0, 0, :self.image_size, :self.image_size].cpu().numpy() * 255
+                # apply goal_table background
+                point_images[point_images==0] = self.pytorch_renderer.goal_table_image[point_images==0]
+                save_image(osp.join(self.render_folder, '{}_{:03d}_{:03d}.png'.format('demo_vision', self.current_iteration, self.frame)), point_images.astype(np.uint8))
+                # load rgb and seg images
+                rgb_images = self.grid_camera_images['rgb'][:self.image_size, :self.image_size, :3]
+                seg_images = self.grid_camera_images['seg'][:self.image_size, :self.image_size, :3]
+                # apply table background
+                table_labels = torch.sum(seg_images, axis=-1) == 0
+                rgb_images[table_labels] = torch.tensor([167., 146., 129.]).to(self.device)
+                rgb_images = rgb_images.cpu().numpy()
+                save_image(osp.join(self.render_folder, '{}_{:03d}_{:03d}.png'.format('demo_state', self.current_iteration, self.frame)), rgb_images.astype(np.uint8))
 
         # update root_state_tensor for object points for visualization
         if self.render_point_clouds:
@@ -1492,16 +1493,16 @@ class StateBasedGrasp(BaseTask):
             
             # update object_velocities
             if 'use_object_velocities' in self.config['Distills'] and self.config['Distills']['use_object_velocities']:
-                self.vision_based_tracker['object_velocities'][appears==1] = (self.rendered_object_points_centers - self.vision_based_tracker['object_centers'])[appears==1].clone()
+                self.vision_based_tracker['object_velocities'][appears.squeeze(-1)==1] = (self.rendered_object_points_centers - self.vision_based_tracker['object_centers'])[appears.squeeze(-1)==1].clone()
             # update object_pcas: use_dynamic_pca
             if 'use_object_pcas' in self.config['Distills'] and self.config['Distills']['use_object_pcas']:
-                if self.config['Distills']['use_dynamic_pcas']: self.vision_based_tracker['object_pcas'][appears==1] = torch.tensor(batch_decompose_pcas(self.rendered_object_points), device=self.device)[appears==1]
+                if self.config['Distills']['use_dynamic_pcas']: self.vision_based_tracker['object_pcas'][appears.squeeze(-1)==1] = torch.tensor(batch_decompose_pcas(self.rendered_object_points), device=self.device)[appears.squeeze(-1)==1]
 
             # update vision_based_tracker with appeared object values
-            self.vision_based_tracker['object_points'][appears==1] = self.rendered_object_points[appears==1].clone()
-            self.vision_based_tracker['object_centers'][appears==1] = self.rendered_object_points_centers[appears==1].clone()
-            self.vision_based_tracker['object_features'][appears==1] = self.rendered_points_visual_features[appears==1].clone()
-            self.vision_based_tracker['hand_object_dists'][appears==1] = self.rendered_hand_object_dists[appears==1].clone()
+            self.vision_based_tracker['object_points'][appears.squeeze(-1)==1] = self.rendered_object_points[appears.squeeze(-1)==1].clone()
+            self.vision_based_tracker['object_centers'][appears.squeeze(-1)==1] = self.rendered_object_points_centers[appears.squeeze(-1)==1].clone()
+            self.vision_based_tracker['object_features'][appears.squeeze(-1)==1] = self.rendered_points_visual_features[appears.squeeze(-1)==1].clone()
+            self.vision_based_tracker['hand_object_dists'][appears.squeeze(-1)==1] = self.rendered_hand_object_dists[appears.squeeze(-1)==1].clone()
 
         # compute full_state
         self.compute_full_state()
@@ -1640,8 +1641,8 @@ class StateBasedGrasp(BaseTask):
             obs_dict['objects'] = torch.zeros_like(obs_dict['objects'], device=self.device)
 
         # # ---------------------- Object Visual Observation 128 ---------------------- # #
-        # 207:335 object visual feature
-        obs_dict['object_visual'] = self.object_points_visual_features
+        # 207:335 object visual feature, default 0
+        obs_dict['object_visual'] = self.object_points_visual_features * 0
         # zero_object_visual_feature
         if self.algo == 'ppo' and 'zero_object_visual_feature' in self.config['Modes'] and self.config['Modes']['zero_object_visual_feature']:
             obs_dict['object_visual'] = torch.zeros_like(obs_dict['object_visual'], device=self.device)
@@ -1691,8 +1692,6 @@ class StateBasedGrasp(BaseTask):
             # update objects with rendered object_centers
             obs_dict['objects'] *= 0.
             obs_dict['objects'][:, :3] = self.vision_based_tracker['object_centers']
-            if 'mask_object_goal' in self.config['Distills'] and self.config['Distills']['mask_object_goal']: pass
-            else: obs_dict['objects'][:, 3:6] = self.goal_init_state[:, :3] - self.vision_based_tracker['object_centers']
             # update objects with estimated velocities
             if 'use_object_velocities' in self.config['Distills'] and self.config['Distills']['use_object_velocities']:
                 obs_dict['objects'][:, 3:6] = self.vision_based_tracker['object_velocities']
