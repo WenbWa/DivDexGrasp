@@ -18,7 +18,7 @@ We introduce UniGraspTransformer, a universal Transformer-based network for dext
 # II. Get Started
 ## Folder Structure:
 ```
-DEXGRASP
+PROJECT
     └── Logs
         └── Results
             └── results_train
@@ -48,19 +48,19 @@ conda activate dexgrasp
 
 Install isaacgym3 as used in our paper:
 ```
-cd DEXGRASP/isaacgym3/isaacgym3/python
+cd PROJECT/isaacgym3/isaacgym3/python
 pip install -e .
 ```
 
 Install UniGraspTransformer:
 ```
-cd DEXGRASP/UniGraspTransformer
+cd PROJECT/UniGraspTransformer
 pip install -e .
 ```
 
 Install pytorch_kinematics:
 ```
-cd DEXGRASP/UniGraspTransformer/pytorch_kinematics
+cd PROJECT/UniGraspTransformer/pytorch_kinematics
 pip install -e .
 ```
 
@@ -71,7 +71,7 @@ pip install "git+https://github.com/facebookresearch/pytorch3d.git"
 
 Prepare folders:
 ```
-python DEXGRASP/UniGraspTransformer/prepare.py
+python PROJECT/UniGraspTransformer/prepare.py
 ```
 
 ## Download Assets:
@@ -83,7 +83,7 @@ Download datasetv4.1_posedata.npy from [here](https://drive.google.com/file/d/1D
 # III. Train from scratch
 ## Step1: Train Dedicated Policy:
 ```
-cd DEXGRASP/UniGraspTransformer/dexgrasp/
+cd PROJECT/UniGraspTransformer/dexgrasp/
 ```
 
 Train&Test dedicated policy for single $nline=0 object in $Object_File=train_set_results.yaml:
@@ -148,5 +148,5 @@ bash run_offline_parallel.sh 0 139 140 universal_policy_vision_based.yaml test_s
 bash run_offline_parallel.sh 0 99 100 universal_policy_vision_based.yaml test_set_unseen_cat_results.yaml distill_0000_3199
 ```
 
-# IV. Test pre-trained models (IsaacGym4)
-Comming soon!
+# V. Test pre-trained models (IsaacGym4)
+# # Comming soon!
