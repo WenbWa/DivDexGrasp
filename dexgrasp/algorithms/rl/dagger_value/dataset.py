@@ -62,20 +62,6 @@ class ObjectTrajectoryDatasetBatch(Dataset):
         # load static_object_visual_feats (Nobj, 64)
         self._load_static_object_visual_feats()
 
-        # encode object ids as features
-        self.encode_object_ids = self.config['Offlines']['encode_object_id_feature'] if 'encode_object_id_feature' in self.config['Offlines'] else False
-        self.encode_object_hots = self.config['Offlines']['encode_object_id_hotvect'] if 'encode_object_id_hotvect' in self.config['Offlines'] else False
-        # generate object_id_feats
-        self.object_id_feats = torch.tensor(self.target_object_lines)
-        self.object_id_feats = torch.cat([self.object_id_feats.unsqueeze(-1) * 0., compute_time_encoding(self.object_id_feats, 28)], dim=-1)
-
-        # zero observation forces
-        self.zero_obs_forces = self.config['Offlines']['zero_obs_forces'] if 'zero_obs_forces' in self.config['Offlines'] else False
-        # zero observation actions
-        self.zero_obs_actions = self.config['Offlines']['zero_obs_actions'] if 'zero_obs_actions' in self.config['Offlines'] else False
-        # zero observation objects
-        self.zero_obs_objects = self.config['Offlines']['zero_obs_objects'] if 'zero_obs_objects' in self.config['Offlines'] else False
-
         # save config yaml
         save_yaml(os.path.join(self.log_dir, 'train.yaml'), self.config)
 
@@ -115,29 +101,6 @@ class ObjectTrajectoryDatasetBatch(Dataset):
         if self.load_static_visual_feats:
             object_trajectory_data['observations'][..., self.config['Obs']['intervals']['object_visual'][0]:self.config['Obs']['intervals']['object_visual'][1]] = 0.1 * self.static_object_visual_feats[nobj, :]
         
-        # mask_object_state
-        if 'mask_object_state' in self.config['Offlines'] and self.config['Offlines']['mask_object_state']:
-            object_trajectory_data['observations'][..., self.config['Obs']['intervals']['objects'][0]+3:self.config['Obs']['intervals']['objects'][1]] *= 0.
-        # mask_object_velocity
-        if 'mask_object_velocity' in self.config['Offlines'] and self.config['Offlines']['mask_object_velocity']:
-            object_trajectory_data['observations'][..., self.config['Obs']['intervals']['objects'][0]+6:self.config['Obs']['intervals']['objects'][1]] *= 0.
-        # mask_hand_object_state
-        if 'mask_hand_object_state' in self.config['Offlines'] and self.config['Offlines']['mask_hand_object_state']:
-            object_trajectory_data['observations'][..., self.config['Obs']['intervals']['hand_objects'][0]:self.config['Obs']['intervals']['hand_objects'][1]] *= 0.
-        
-        # mask_obs_time
-        if 'mask_obs_time' in self.config['Offlines'] and self.config['Offlines']['mask_obs_time']:
-            object_trajectory_data['observations'][..., self.config['Obs']['intervals']['times'][0]:self.config['Obs']['intervals']['times'][1]] *= 0.
-        # mask_obs_hand_object
-        if 'mask_obs_hand_object' in self.config['Offlines'] and self.config['Offlines']['mask_obs_hand_object']:
-            object_trajectory_data['observations'][..., self.config['Obs']['intervals']['hand_objects'][0]:self.config['Obs']['intervals']['hand_objects'][1]] *= 0.
-        # mask_obs_object_visual
-        if 'mask_obs_object_visual' in self.config['Offlines'] and self.config['Offlines']['mask_obs_object_visual']:
-            object_trajectory_data['observations'][..., self.config['Obs']['intervals']['object_visual'][0]:self.config['Obs']['intervals']['object_visual'][1]] *= 0.
-        # mask_obs_object_state
-        if 'mask_obs_object_state' in self.config['Offlines'] and self.config['Offlines']['mask_obs_object_state']:
-            object_trajectory_data['observations'][..., self.config['Obs']['intervals']['objects'][0]:self.config['Obs']['intervals']['objects'][1]] *= 0.
-        
         # vision_based: update observations
         if self.vision_based:
             # load rendered object_state: features, centers, hand_object
@@ -162,94 +125,6 @@ class ObjectTrajectoryDatasetBatch(Dataset):
                 if self.config['Offlines']['use_dynamic_pcas']: object_trajectory_data['observations'][..., self.config['Obs']['intervals']['objects'][0]+6:self.config['Obs']['intervals']['objects'][0]+15] = object_pcas
                 else: object_trajectory_data['observations'][..., self.config['Obs']['intervals']['objects'][0]+6:self.config['Obs']['intervals']['objects'][0]+15] = object_pcas[:, 0, :][:, None, :]
 
-        
-        # load external feature: state-based or vision-based
-        if self.use_external_feature:
-            # use state-based pc features
-            if self.external_feature_name == 'feature_state_64':
-                object_features = object_trajectory_data['features']
-            # load external feature
-            else: 
-                feature_data_path = osp.join(self.trajectory_dir, '{:04d}_seed0'.format(self.target_object_lines[nobj]), '{}/feature_{:03d}_norm.pkl'.format(self.external_feature_name, ntraj))
-                object_features = load_pickle(feature_data_path)
-            
-            # vision_based: update observations
-            if self.vision_based:
-                # load object_state: object_centers, hand_object_dists
-                object_state_path = osp.join(self.trajectory_dir, '{:04d}_seed0'.format(self.target_object_lines[nobj]), 'objectstate/objectstate_{:03d}.pkl'.format(ntraj))
-                object_state = load_pickle(object_state_path)
-                # check valid, appears within trajectory
-                object_state['object_features'] = object_features
-                object_state = check_object_valid_appears(object_trajectory_data['valids'], object_state)
-                # update object_features
-                object_features = object_state['object_features']
-                # use state-based object_center 
-                if 'use_state_object_center' in self.config['Offlines'] and self.config['Offlines']['use_state_object_center']:
-                    object_trajectory_data['observations'][..., self.config['Obs']['intervals']['objects'][0]+3:self.config['Obs']['intervals']['objects'][1]] *= 0
-                else:
-                    # update objects with object_centers
-                    object_trajectory_data['observations'][..., self.config['Obs']['intervals']['objects'][0]:self.config['Obs']['intervals']['objects'][1]] *= 0
-                    object_trajectory_data['observations'][..., self.config['Obs']['intervals']['objects'][0]:self.config['Obs']['intervals']['objects'][0]+3] = object_state['object_centers']
-                    if 'mask_object_goal' in self.config['Offlines'] and self.config['Offlines']['mask_object_goal']: pass
-                    else: object_trajectory_data['observations'][..., self.config['Obs']['intervals']['objects'][0]+3:self.config['Obs']['intervals']['objects'][0]+6] = np.array([[[0.0, 0.0, 0.9]]]) - object_state['object_centers']
-                # use state-based hand_object
-                if 'use_state_hand_object' in self.config['Offlines'] and self.config['Offlines']['use_state_hand_object']: pass
-                # update hand_objects
-                else: object_trajectory_data['observations'][..., self.config['Obs']['intervals']['hand_objects'][0]:self.config['Obs']['intervals']['hand_objects'][1]] = object_state['hand_object_dists']
-                # update valids with appears
-                object_trajectory_data['valids'] *= object_state['appears']
-
-                # use object_velocity, estimated from object_centers
-                if 'use_object_velocities' in self.config['Offlines'] and self.config['Offlines']['use_object_velocities']:
-                    # get previous object_center
-                    previous_object_center = np.concatenate([object_state['object_centers'][..., 0][..., None], object_state['object_centers'][..., :-1]], axis=-1)
-                    # estimate object_velocity
-                    object_trajectory_data['observations'][..., self.config['Obs']['intervals']['objects'][0]+3:self.config['Obs']['intervals']['objects'][0]+6] = object_state['object_centers'] - previous_object_center
-                # use object_pcas, estimated from object_points
-                if 'use_object_pcas' in self.config['Offlines'] and self.config['Offlines']['use_object_pcas']:
-                    # get object_pcas
-                    object_pcas = object_state['object_pcas'].reshape(object_state['object_pcas'].shape[0], object_state['object_pcas'].shape[1], -1)
-                    # use dynamic or static object_pcas
-                    if self.config['Offlines']['use_dynamic_pcas']: object_trajectory_data['observations'][..., self.config['Obs']['intervals']['objects'][0]+6:self.config['Obs']['intervals']['objects'][0]+15] = object_pcas
-                    else: object_trajectory_data['observations'][..., self.config['Obs']['intervals']['objects'][0]+6:self.config['Obs']['intervals']['objects'][0]+15] = object_pcas[:, 0, :][:, None, :]
-                # zero object state
-                if 'zero_object_state' in self.config['Offlines'] and self.config['Offlines']['zero_object_state']:
-                    object_trajectory_data['observations'][..., self.config['Obs']['intervals']['objects'][0]:self.config['Obs']['intervals']['objects'][1]] *= 0.
-
-            # concate external feature
-            object_trajectory_data['observations'] = np.concatenate([object_trajectory_data['observations'][..., :self.config['Obs']['intervals']['object_visual'][0]],
-                                                                     object_features, object_trajectory_data['observations'][..., self.config['Obs']['intervals']['object_visual'][1]:]], axis=-1)
-
-        
-        # # remove unwanted object_trajectory_data
-        # if 'features' in object_trajectory_data : object_trajectory_data.pop('features')
-        # if not self.load_values and 'values' in object_trajectory_data: object_trajectory_data.pop('values')
-
-        # zero observation actions
-        if self.zero_obs_actions:
-            object_trajectory_data['observations'][..., self.config['Obs']['intervals']['actions'][0]:self.config['Obs']['intervals']['actions'][1]] *= 0.
-        # zero observation forces
-        if self.zero_obs_forces:
-            for name, interval in self.config['Obs']['forces'].items():
-                if name not in self.config['Obs']['intervals']: continue
-                object_trajectory_data['observations'][..., self.config['Obs']['intervals'][name][0]+interval[0]:self.config['Obs']['intervals'][name][0]+interval[1]] *= 0.
-        # zero observation objects, keep object_pos and object_hand_dist
-        if self.zero_obs_objects:
-            object_trajectory_data['observations'][..., self.config['Obs']['intervals']['objects'][0]+3:self.config['Obs']['intervals']['objects'][1]-3] *= 0.
-        
-        # encode object id feats
-        if self.encode_object_ids:
-            # append object id feats into observations
-            if len(object_trajectory_data['observations'].shape) == 2: object_id_feats = self.object_id_feats[nobj].repeat(object_trajectory_data['observations'].shape[0], 1)
-            else: object_id_feats = self.object_id_feats[nobj].repeat(object_trajectory_data['observations'].shape[0], object_trajectory_data['observations'].shape[1], 1)
-            object_trajectory_data['observations'] = np.concatenate([object_trajectory_data['observations'], object_id_feats.numpy()], axis=-1)
-        # encode object hot vects
-        if self.encode_object_hots:
-            if len(object_trajectory_data['observations'].shape) == 2: object_hot_vects = np.zeros((object_trajectory_data['observations'].shape[0], self.config['Offlines']['hotvect_size']))
-            else: object_hot_vects = np.zeros((object_trajectory_data['observations'].shape[0], object_trajectory_data['observations'].shape[1], self.config['Offlines']['hotvect_size']))
-            object_hot_vects[..., nobj % self.config['Offlines']['hotvect_size']] = 1.
-            object_trajectory_data['observations'] = np.concatenate([object_trajectory_data['observations'], object_hot_vects.astype(object_trajectory_data['observations'].dtype)], axis=-1)
-        
         # # send object_trajectory_data to GPU tensor
         # for key, value in object_trajectory_data.items():
         #     object_trajectory_data[key] = torch.tensor(object_trajectory_data[key], dtype=self.dtype, device=self.device)

@@ -20,8 +20,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from utils.general_utils import *
 from algorithms.rl.dagger_value.storage import RolloutStorage, PPORolloutStorage, PERBuffer
-from algorithms.rl.dagger_value.module import ActorCriticTransformerEncoder, ActorCriticTransformerStepEncoder
-from algorithms.rl.dagger_value.module import ActorCriticTransformerCausal, ActorCriticTransformerCausalEncoder
+from algorithms.rl.dagger_value.module import ActorCriticTransformerEncoder
 
 
 class DAGGERVALUE:
@@ -103,29 +102,8 @@ class DAGGERVALUE:
         # Pick model type: dagger_value, transformer
         self.use_model_type = self.config['Distills']['use_model_type'] if 'use_model_type' in self.config['Distills'] else 'dagger_value'
         
-        # Load transformer model: transformer with observation steps for actor model and mlp for value model
-        if self.use_model_type == 'transformer_step_encoder':
-            # init ActorCriticTransformerStepEncoder
-            self.actor = ActorCriticTransformerStepEncoder(obs_shape=(self.config['Weights']['num_observation'], ), states_shape=None, actions_shape=(24, ), initial_std=0.8, model_cfg=self.config)
-            self.actor.to(self.device)
-            # init ActorCriticTransformerStepEncoder Actor Optimizer
-            self.optimizer = optim.Adam(self.actor.actor.parameters(), lr=float(self.config['Offlines']['learning_rate']))
-        # Load transformer model: transformer with observation sequences for actor model and mlp for value model
-        elif self.use_model_type == 'transformer_causal_encoder':
-            # init ActorCriticTransformerCausal
-            self.actor = ActorCriticTransformerCausalEncoder(obs_shape=(self.config['Weights']['num_observation'], ), states_shape=None, actions_shape=(24, ), initial_std=0.8, model_cfg=self.config)
-            self.actor.to(self.device)
-            # init ActorCriticTransformerCausal Actor Optimizer
-            self.optimizer = optim.Adam(self.actor.actor.parameters(), lr=float(self.config['Offlines']['learning_rate']))
-        # Load transformer model: transformer with observation sequences for actor model and mlp for value model
-        elif self.use_model_type == 'transformer_causal':
-            # init ActorCriticTransformerCausal
-            self.actor = ActorCriticTransformerCausal(obs_shape=(self.config['Weights']['num_observation'], ), states_shape=None, actions_shape=(24, ), initial_std=0.8, model_cfg=self.config)
-            self.actor.to(self.device)
-            # init ActorCriticTransformerCausal Actor Optimizer
-            self.optimizer = optim.Adam(self.actor.actor.parameters(), lr=float(self.config['Offlines']['learning_rate']))
         # Load transformer model: transformer for actor model and mlp for value model 
-        elif self.use_model_type == 'transformer_encoder':
+        if self.use_model_type == 'transformer_encoder':
             # init ActorCriticTransformerEncoder
             self.actor = ActorCriticTransformerEncoder(obs_shape=(self.config['Weights']['num_observation'], ), states_shape=None, actions_shape=(24, ), initial_std=0.8, model_cfg=self.config)
             self.actor.to(self.device)
@@ -144,23 +122,15 @@ class DAGGERVALUE:
 
             # apply action-value network
             if self.apply_value_net:
-                # combine action and value nets
-                if 'combine_policy_value_net' in self.config['Distills'] and self.config['Distills']['combine_policy_value_net']:
-                    # create actor_critic nets with combined optimizer
-                    self.actor = actor_critic_class(self.observation_space.shape, self.state_space.shape, self.action_space.shape,
-                                                    init_noise_std, student_model_cfg, asymmetric=asymmetric, use_pc=self.is_vision, combine=True)
-                    self.optimizer_combine = optim.Adam(self.actor.parameters(), lr=learning_rate)
-                # seperate action and value nets
-                else:
-                    # create actor and critic net with seperate optimizer, optimizer_value
-                    self.actor = actor_critic_class(self.observation_space.shape, self.state_space.shape, self.action_space.shape,
-                                                    init_noise_std, student_model_cfg, asymmetric=asymmetric, use_pc=self.is_vision)
-                    self.optimizer = optim.Adam(self.actor.actor.parameters(), lr=learning_rate)
-                    self.optimizer_value = optim.Adam(self.actor.critic.parameters(), lr=learning_rate)
+                # create actor and critic net with seperate optimizer, optimizer_value
+                self.actor = actor_critic_class(self.observation_space.shape, self.state_space.shape, self.action_space.shape,
+                                                init_noise_std, student_model_cfg, asymmetric=asymmetric, use_pc=self.is_vision)
+                self.optimizer = optim.Adam(self.actor.actor.parameters(), lr=learning_rate)
+                self.optimizer_value = optim.Adam(self.actor.critic.parameters(), lr=learning_rate)
             # apply action network only
             else:
                 self.actor = actor_class(self.observation_space.shape, self.state_space.shape, self.action_space.shape,
-                                        init_noise_std, student_model_cfg, asymmetric=asymmetric, use_pc=self.is_vision)
+                                         init_noise_std, student_model_cfg, asymmetric=asymmetric, use_pc=self.is_vision)
                 self.optimizer = optim.Adam(self.actor.parameters(), lr=learning_rate)
             self.actor.to(self.device)
 

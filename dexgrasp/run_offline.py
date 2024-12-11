@@ -10,12 +10,10 @@ import torch.optim as optim
 
 from utils.general_utils import *
 from torch.utils.data import DataLoader
-from plot import plot_mlp_train_log_losses, plot_train_log_losses
+from plot import plot_train_log_losses
 
 from algorithms.rl.dagger_value.module import ActorCriticDagger
-from algorithms.rl.dagger_value.module import ActorCriticTransformerEncoder, ActorCriticTransformerStepEncoder
-from algorithms.rl.dagger_value.module import ActorCriticTransformerCausal, ActorCriticTransformerCausalEncoder
-
+from algorithms.rl.dagger_value.module import ActorCriticTransformerEncoder
 from algorithms.rl.dagger_value.dataset import ObjectTrajectoryDatasetBatch
 
 
@@ -60,24 +58,8 @@ def train_offline_model_batch(args):
     else: config['Offlines']['train_epochs'], config['Offlines']['train_batchs'] = 200, 100
     # sequential observations and actions input
     Sequential_Mode = True
-    # use TransformerEcoder with observation patches and steps 
-    if use_model_type == 'transformer_step_encoder':
-        # init ActorCriticTransformerStepEncoder
-        ActorCriticModel = ActorCriticTransformerStepEncoder(obs_shape=(config['Weights']['num_observation'], ), states_shape=None, actions_shape=(config['Weights']['num_action'], ), initial_std=0.8, model_cfg=config)
-    # use TransformerEcoder with observation patches and sequences 
-    elif use_model_type == 'transformer_causal_encoder':
-        # init ActorCriticTransformerCausal
-        ActorCriticModel = ActorCriticTransformerCausalEncoder(obs_shape=(config['Weights']['num_observation'], ), states_shape=None, actions_shape=(config['Weights']['num_action'], ), initial_std=0.8, model_cfg=config)
-    # use TransformerEcoder with observation sequences
-    elif use_model_type == 'transformer_causal':
-        # init ActorCriticTransformerCausal
-        ActorCriticModel = ActorCriticTransformerCausal(obs_shape=(config['Weights']['num_observation'], ), states_shape=None, actions_shape=(config['Weights']['num_action'], ), initial_std=0.8, model_cfg=config)
-        # set training epochs and batchs
-        if num_object >= 3200: config['Offlines']['train_epochs'], config['Offlines']['train_batchs'] = 40, 1000
-        elif num_object >= 10: config['Offlines']['train_epochs'], config['Offlines']['train_batchs'] = 200, 500
-        else: config['Offlines']['train_epochs'], config['Offlines']['train_batchs'] = 800, 500
     # use TransformerEcoder with observation patches 
-    elif use_model_type == 'transformer_encoder':
+    if use_model_type == 'transformer_encoder':
         # use observation patches
         Sequential_Mode = False
         # init ActorCriticTransformerEncoder

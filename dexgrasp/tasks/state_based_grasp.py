@@ -576,17 +576,6 @@ class StateBasedGrasp(BaseTask):
         self.hand_point_indices = to_torch(self.hand_point_indices, dtype=torch.long, device=self.device)
         self.object_point_indices = to_torch(self.object_point_indices, dtype=torch.long, device=self.device)
 
-        # encode object_line_feats
-        self.env_object_line_list = [self.object_line_list[id] for id in self.env_object_scale_id]
-        self.object_line_feats = torch.tensor(self.env_object_line_list).to(self.device)
-        self.object_line_feats = torch.cat([self.object_line_feats.unsqueeze(-1) * 0., compute_time_encoding(self.object_line_feats, 28)], dim=-1)
-
-        # encode object_hot_vects
-        if self.algo == 'dagger_value' and 'encode_object_id_hotvect' in self.config['Distills'] and self.config['Distills']['encode_object_id_hotvect']:
-            self.object_hot_vects = torch.zeros((len(self.env_object_line_list), self.config['Distills']['hotvect_size'])).to(self.device)
-            for nobj, line in enumerate(self.env_object_line_list):
-                self.object_hot_vects[nobj, line % self.config['Distills']['hotvect_size']] = 1.
-
         # check load single or multiple objects
         self.load_single_object = self.env_object_scale_id.count(self.env_object_scale_id[0]) == len(self.env_object_scale_id)
         # stack single object mesh
@@ -689,8 +678,6 @@ class StateBasedGrasp(BaseTask):
         # static init object states
         if 'static_init' in self.config['Modes'] and self.config['Modes']['static_init']:
             hand_shift = 0.08
-            if 'half_hand_shift' in self.config['Modes'] and self.config['Modes']['half_hand_shift']: hand_shift = 0.04
-            if 'zero_hand_shift' in self.config['Modes'] and self.config['Modes']['zero_hand_shift']: hand_shift = 0.00
             # init shadow_hand pose: top of table 0.2, face down, center palm
             shadow_hand_start_pose = gymapi.Transform()
             shadow_hand_start_pose.p = gymapi.Vec3(0.0, hand_shift, self.table_dims.z + 0.2)  # gymapi.Vec3(0.1, 0.1, 0.65)
@@ -1244,35 +1231,6 @@ class StateBasedGrasp(BaseTask):
             # compute object pca axes
             self.rendered_object_pcas = torch.tensor(batch_decompose_pcas(self.rendered_object_points), device=self.device)
 
-            # save rendered images for visualization
-            if self.render_folder is not None and self.num_envs==1 and self.current_iteration==0:
-                # grid pytorch_rendered_images
-                grid_pytorch_rendered_images = grid_camera_images(self.pytorch_rendered_images[0], border=False)
-                # save grid depth images
-                grid_depth_images = torch.where(-grid_pytorch_rendered_images[..., -2] > 1., 1., -grid_pytorch_rendered_images[..., -2]) * 255.
-                save_path = osp.join(self.render_folder, '{}_{:03d}_{:03d}.png'.format('render_depth', self.current_iteration, self.frame))
-                save_image(save_path, grid_depth_images.cpu().numpy().astype(np.uint8))
-
-                # render hand and object point_images for visualization
-                # create hand and object label_colors
-                label_colors = torch.ones_like(self.pytorch_rendered_points[..., :3])
-                label_colors[self.pytorch_rendered_points[..., -1] == 2] = torch.tensor([128., 215., 128.]).to(self.device)
-                label_colors[self.pytorch_rendered_points[..., -1] == 3] = torch.tensor([90., 90., 173.]).to(self.device)
-                # render hand and object point_images
-                point_images = self.pytorch_renderer.render_point_images(self.pytorch_rendered_points[..., [1, 2, 0]], label_colors/225.)
-                point_images = point_images[0, 0, :self.image_size, :self.image_size].cpu().numpy() * 255
-                # apply goal_table background
-                point_images[point_images==0] = self.pytorch_renderer.goal_table_image[point_images==0]
-                save_image(osp.join(self.render_folder, '{}_{:03d}_{:03d}.png'.format('demo_vision', self.current_iteration, self.frame)), point_images.astype(np.uint8))
-                # load rgb and seg images
-                rgb_images = self.grid_camera_images['rgb'][:self.image_size, :self.image_size, :3]
-                seg_images = self.grid_camera_images['seg'][:self.image_size, :self.image_size, :3]
-                # apply table background
-                table_labels = torch.sum(seg_images, axis=-1) == 0
-                rgb_images[table_labels] = torch.tensor([167., 146., 129.]).to(self.device)
-                rgb_images = rgb_images.cpu().numpy()
-                save_image(osp.join(self.render_folder, '{}_{:03d}_{:03d}.png'.format('demo_state', self.current_iteration, self.frame)), rgb_images.astype(np.uint8))
-
         # update root_state_tensor for object points for visualization
         if self.render_point_clouds:
             # set hand point clouds
@@ -1468,16 +1426,6 @@ class StateBasedGrasp(BaseTask):
             # compute hand_object distances
             self.rendered_hand_object_dists = batch_sided_distance(self.hand_body_pos, self.rendered_object_points)
 
-            # use state-based pc feature
-            if 'use_state_visual_feature' in self.config['Distills'] and self.config['Distills']['use_state_visual_feature']:
-                self.rendered_points_visual_features = self.object_points_visual_features
-            # use state-based object center
-            if 'use_state_object_center' in self.config['Distills'] and self.config['Distills']['use_state_object_center']:
-                self.rendered_object_points_centers = self.unpose_point(self.object_pose[:, 0:3])
-            # use state-based hand object distance
-            if 'use_state_hand_object' in self.config['Distills'] and self.config['Distills']['use_state_hand_object']:
-                self.rendered_hand_object_dists = self.right_hand_body_pc_batch_dist
-
             # init vision_based_tracker
             if self.vision_based_tracker is None:
                 self.vision_based_tracker = {'object_points': self.rendered_object_points.clone(),
@@ -1661,31 +1609,6 @@ class StateBasedGrasp(BaseTask):
         if 'encode_hand_object_dist' in self.config['Modes'] and self.config['Modes']['encode_hand_object_dist']:
             obs_dict['hand_objects'] = self.right_hand_body_pc_batch_dist
         
-        
-        # # ---------------------- Mask Observations ---------------------- # #
-        # mask_object_state
-        if self.algo == 'dagger_value' and 'mask_object_state' in self.config['Distills'] and self.config['Distills']['mask_object_state']:
-            obs_dict['objects'][..., 3:] *= 0.
-        # mask_object_velocity
-        if self.algo == 'dagger_value' and 'mask_object_velocity' in self.config['Distills'] and self.config['Distills']['mask_object_velocity']:
-            obs_dict['objects'][..., 6:] *= 0.
-        # mask_hand_object_state
-        if self.algo == 'dagger_value' and 'mask_hand_object_state' in self.config['Distills'] and self.config['Distills']['mask_hand_object_state']:
-            obs_dict['hand_objects'] *= 0.
-        
-        # mask_obs_time
-        if self.algo == 'dagger_value' and 'mask_obs_time' in self.config['Distills'] and self.config['Distills']['mask_obs_time']:
-            obs_dict['times'] *= 0.
-        # mask_obs_hand_object
-        if self.algo == 'dagger_value' and 'mask_obs_hand_object' in self.config['Distills'] and self.config['Distills']['mask_obs_hand_object']:
-            obs_dict['hand_objects'] *= 0.
-        # mask_obs_object_visual
-        if self.algo == 'dagger_value' and 'mask_obs_object_visual' in self.config['Distills'] and self.config['Distills']['mask_obs_object_visual']:
-            obs_dict['object_visual'] *= 0.
-        # mask_obs_object_state
-        if self.algo == 'dagger_value' and 'mask_obs_object_state' in self.config['Distills'] and self.config['Distills']['mask_obs_object_state']:
-            obs_dict['objects'] *= 0.
-        
         # # ---------------------- Vision Based Setting ---------------------- # #
         # TODO: update vision_based observations
         if self.vision_based:
@@ -1698,9 +1621,6 @@ class StateBasedGrasp(BaseTask):
             # update objects with estimated pcas
             if 'use_object_pcas' in self.config['Distills'] and self.config['Distills']['use_object_pcas']:
                 obs_dict['objects'][:, 6:15] = self.vision_based_tracker['object_pcas'].reshape(self.vision_based_tracker['object_pcas'].shape[0], -1)
-            # zero object state
-            if 'zero_object_state' in self.config['Distills'] and self.config['Distills']['zero_object_state']:
-                obs_dict['objects'] *= 0.
             # update object_visual with rendered object_features
             obs_dict['object_visual'] = self.vision_based_tracker['object_features']
             # update hand_objects with rendered hand_object_dists
@@ -1719,19 +1639,6 @@ class StateBasedGrasp(BaseTask):
             start_temp += obs_dict[name].shape[-1]
         # # Check obs_infos within config file
         # if 'Obs' in self.config: assert self.config['Obs']['names'] == self.obs_infos['names'] and self.config['Obs']['intervals'] == self.obs_infos['intervals'], "Wrong Obs names and intervals!"
-
-        # zero observation actions
-        if self.algo == 'dagger_value' and 'zero_obs_actions' in self.config['Distills'] and self.config['Distills']['zero_obs_actions']:
-            self.obs_buf[:, self.obs_infos['intervals']['actions'][0]:self.obs_infos['intervals']['actions'][1]] *= 0.
-        
-        # zero observation forces
-        if self.algo == 'dagger_value' and 'zero_obs_forces' in self.config['Distills'] and self.config['Distills']['zero_obs_forces']:
-            for name, interval in self.config['Obs']['forces'].items():
-                self.obs_buf[:, self.obs_infos['intervals'][name][0]+interval[0]:self.obs_infos['intervals'][name][0]+interval[1]] *= 0.
-        
-        # zero observation objects, keep object_pos and object_hand_dist
-        if self.algo == 'dagger_value' and 'zero_obs_objects' in self.config['Distills'] and self.config['Distills']['zero_obs_objects']:
-            self.obs_buf[:, self.obs_infos['intervals']['objects'][0]+3:self.obs_infos['intervals']['objects'][1]-3] *= 0.
 
         return
 
