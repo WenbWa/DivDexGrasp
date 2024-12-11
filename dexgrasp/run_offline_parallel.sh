@@ -1,20 +1,18 @@
+# # Train from scratch:
 # bash run_offline_parallel.sh 0 9 10 universal_policy_state_based.yaml train_set_results.yaml
-# bash run_offline_parallel.sh 0 139 140 universal_policy_state_based.yaml test_set_seen_cat_results.yaml
-# bash run_offline_parallel.sh 0 99 100 universal_policy_state_based.yaml test_set_unseen_cat_results.yaml
+# # Test pre-trained checkpoints in distill_0000_3199:
+# bash run_offline_parallel.sh 0 9 10 universal_policy_state_based.yaml train_set_results.yaml distill_0000_3199
+# bash run_offline_parallel.sh 0 139 140 universal_policy_state_based.yaml test_set_seen_cat_results.yaml distill_0000_3199
+# bash run_offline_parallel.sh 0 99 100 universal_policy_state_based.yaml test_set_unseen_cat_results.yaml distill_0000_3199
+
 # Define Start, Finish Lines, Episode Num, Config_Dir, Object_File
 Start=$1
 Finish=$2
 Episode=$3
 Config_Dir=$4
 Object_File=$5
-Test_Epoch=$6
-Model_Dir=$7
+Model_Dir=$6
 Device_Number=$(nvidia-smi --list-gpus | wc -l)
-
-# No Test_Epoch Assigned
-if [ -z "$Test_Epoch" ]; then
-    Test_Epoch=0
-fi
 
 # No Model_Dir Assigned
 if [ -z "$Model_Dir" ]; then
@@ -49,7 +47,7 @@ do
         echo "Running python test: $nline, episode: $nepisode, cuda:$cuda_id, config: $Config_Dir"
         # test distilled model for single line in object_scale_file, within Target_List
         python run_online.py --task StateBasedGrasp --algo dagger_value --seed 0 --rl_device cuda:${cuda_id} \
-        --num_envs $Ntest_envs --max_iterations $Ntrain_its --config $Config_Dir --headless --test --test_iteration $Ntest_its --test_epoch $Test_Epoch \
+        --num_envs $Ntest_envs --max_iterations $Ntrain_its --config $Config_Dir --headless --test --test_iteration $Ntest_its \
         --model_dir $Model_Dir --object_scale_file $Object_File --start_line $nline --end_line $((nline + 1))
 
         ) &

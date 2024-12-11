@@ -1,4 +1,6 @@
-# bash run_online_parallel.sh 0 9 5 dedicated_policy.yaml train_set_results.yaml
+# # Train, Test, Generate Trajectory from scratch:
+# bash run_online_parallel.sh 0 9 10 dedicated_policy.yaml train_set_results.yaml
+
 # Define Start, Finish Lines, Episode Num, Config_Dir, Object_File
 Start=$1
 Finish=$2

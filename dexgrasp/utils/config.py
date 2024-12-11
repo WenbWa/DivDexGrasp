@@ -500,10 +500,10 @@ def get_args(benchmark=False, use_rlg_config=False):
             # test seen and unseen set objects: Logs/save_name/results_distill/random/save_name/model_best.pt
             if args.object_scale_file == 'test_set_seen_cat_results.yaml':
                 args.logdir = os.path.realpath('{}/results_distill/random/{}/results_test_seen_seed0/{:04d}'.format(args.config['Save_Base'], args.config['Distills']['save_name'], args.start_line))
-                args.model_dir = '{}/model_best.pt'.format(os.path.dirname(os.path.dirname(args.logdir)))
+                args.model_dir = '{}/{}/model_best.pt'.format(os.path.dirname(os.path.dirname(args.logdir)), distill_folder.split('/')[-1])
             if args.object_scale_file == 'test_set_unseen_cat_results.yaml':
                 args.logdir = os.path.realpath('{}/results_distill/random/{}/results_test_unseen_seed0/{:04d}'.format(args.config['Save_Base'], args.config['Distills']['save_name'], args.start_line))
-                args.model_dir = '{}/model_best.pt'.format(os.path.dirname(os.path.dirname(args.logdir)))
+                args.model_dir = '{}/{}/model_best.pt'.format(os.path.dirname(os.path.dirname(args.logdir)), distill_folder.split('/')[-1])
 
     # train, test default UniDexGrasp++
     if args.default: args.model_dir = '{}/dexgrasp/example_model/state_based_model.pt'.format(BASE_DIR)
