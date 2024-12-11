@@ -109,7 +109,7 @@ bash run_online_parallel.sh 0 9 10 dedicated_policy.yaml train_set_results.yaml
 ```
 
 ## Step3: Train Universal Policy:
-Train state-based and vision-based universal policies:
+Train state-based and vision-based universal policies on objects 0~9:
 ```
 python run_offline.py --start 0 --finish 9 --config universal_policy_state_based.yaml --object train_set_results.yaml --device cuda:0
 python run_offline.py --start 0 --finish 9 --config universal_policy_vision_based.yaml --object train_set_results.yaml --device cuda:0
@@ -126,7 +126,7 @@ python run_online.py --task StateBasedGrasp --algo dagger_value --seed 0 --rl_de
 --num_envs 1000 --max_iterations 10000 --config universal_policy_vision_based.yaml --headless --test --test_iteration 1 \
 --model_dir distill_0000_0009 --object_scale_file train_set_results.yaml --start_line 0 --end_line 1
 ```
-**Script:** Train&test state-based and vision-based universal policies:
+**Script:** Train&test state-based and vision-based universal policies on objects 0~9:
 ```
 bash run_offline_parallel.sh 0 9 10 universal_policy_state_based.yaml train_set_results.yaml
 bash run_offline_parallel.sh 0 9 10 universal_policy_vision_based.yaml train_set_results.yaml
